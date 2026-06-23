@@ -38,6 +38,11 @@
   /* Shadow */
   --shadow-color: rgba(0, 0, 0, 0.55);
 
+  /* Terminal canvas background — must match the xterm theme's `background`
+     field exactly (see src/lib/theme.ts). xterm is transparency-enabled, so the
+     terminal container paints this behind the transparent text canvas. */
+  --terminal-bg: #000308;
+
   /* Decorative glow for the small profile dots in the tab bar — soft mint in
      dark mode; the bright mint reads as a harsh halo on white, so light mode
      uses a near-imperceptible ring instead. */
@@ -108,6 +113,9 @@
 
   /* Shadow — slightly more present than the first pass for elevation depth. */
   --shadow-color: rgba(15, 23, 42, 0.12);
+
+  /* Terminal canvas — pure white in light mode (matches the xterm theme). */
+  --terminal-bg: #ffffff;
 
   /* No mint halo on white — a faint ring gives the dot definition without the
      harsh glow the bright mint produces on a light surface. */
@@ -200,8 +208,11 @@ button:focus-visible, input:focus-visible {
   justify-content: center;
   gap: 7px;
   padding: 12px 14px 9px;
-  background: var(--brand-ink);
-  box-shadow: inset 0 -1px var(--line);
+  /* Use the raised surface (white in light mode) so the logo — which is
+     black-on-transparent in light mode — always has a high-contrast backing.
+     In dark mode --surface is the near-black panel, which still reads correctly. */
+  background: var(--surface);
+  box-shadow: inset 0 -1px var(--border);
 }
 
 .brand-logo {
@@ -396,9 +407,12 @@ kbd {
 }
 .pane-launch:hover { color: var(--text-strong); background: var(--surface-raised); box-shadow: 0 0 0 1px var(--text-strong); }
 .pane-launch.is-active {
-  color: var(--text-strong);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 1px rgba(23,245,193,.52), inset 0 -2px var(--accent);
+  /* Accent-filled when the pane is open — reads as a clear "on" state on both
+     themes. In light mode especially, a solid teal fill pops far better than
+     the border-only treatment, which disappeared against the white surface. */
+  color: var(--accent-contrast);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .workspace-content {
@@ -681,9 +695,13 @@ kbd {
   min-height: 0;
   padding: 14px 10px 8px 14px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 30% 0%, rgba(57, 70, 59, .08), transparent 34%),
-    var(--bg);
+  /* The container background must match the xterm theme's background exactly.
+     xterm runs with allowTransparency: true, so its canvas is transparent
+     except where the theme's background color paints — if the container behind
+     it differs (e.g. the app's grey --bg in light mode), you get a visible
+     "half white / half grey" seam across the terminal. A dedicated token keeps
+     the two in lock-step across themes. */
+  background: var(--terminal-bg);
 }
 .terminal-surface .xterm { height: 100%; }
 .terminal-surface .xterm-viewport { scrollbar-color: var(--surface-raised) transparent; scrollbar-width: thin; }

@@ -403,7 +403,11 @@ export default function App() {
 
   const openBrowser = useCallback((url = "https://www.google.com") => {
     if (!workspace) return;
-    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    // Accept any explicit URL scheme (http(s)://, file://, etc.) as-is; only
+    // prepend https:// for bare hostnames typed in the address bar. Previously
+    // a `file://` URL failed the http-only check and got wrapped as
+    // `https://file://...`, corrupting local-file opens from the file tree.
+    const normalized = /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`;
     const existing = workspace.browserTabs.find((tab) => tab.url === normalized);
     if (existing) {
       updateWorkspace(workspace.id, (item) => ({

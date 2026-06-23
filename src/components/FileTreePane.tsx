@@ -34,16 +34,20 @@ const BROWSER_OPENABLE_EXTENSIONS = new Set([
   "pdf"
 ]);
 
-function isBrowserOpenable(name: string): boolean {
+export function isBrowserOpenable(name: string): boolean {
   const ext = name.split(".").pop()?.toLowerCase();
   return ext ? BROWSER_OPENABLE_EXTENSIONS.has(ext) : false;
 }
 
 /// Build a `file://` URL from an absolute path. Windows paths (C:\\...) become
-/// `file:///C:/...`; Unix paths (/home/...) become `file:///home/...`.
-function toFileUrl(path: string): string {
+/// `file:///C:/...` (three slashes — empty host, absolute path /C:/...); Unix
+/// paths (/home/...) become `file:///home/...`. Three slashes is the canonical
+/// form WebView2/WKWebView expect; two-slash variants get mangled by some
+/// webview URL normalizers.
+export function toFileUrl(path: string): string {
   const normalized = path.replace(/\\/g, "/");
-  return `file://${normalized.startsWith("/") ? "" : "/"}${normalized}`;
+  const withLeadingSlash = normalized.startsWith("/") ? normalized : `/${normalized}`;
+  return `file://${withLeadingSlash}`;
 }
 
 function fileIcon(name: string) {
