@@ -2,27 +2,31 @@ import { describe, expect, it } from "vitest";
 import { isBrowserOpenable, toFileUrl } from "./FileTreePane";
 
 describe("toFileUrl", () => {
-  it("builds a canonical localfile:// URL from a Windows path", () => {
-    // Uses the custom localfile:// protocol (not file://) because WebView2
-    // blocks direct file:// navigation from external origins. The Rust
-    // backend registers a localfile scheme handler that reads from disk.
-    expect(toFileUrl("C:\\Users\\Alex\\site\\index.html"))
-      .toBe("localfile:///C:/Users/Alex/site/index.html");
+  it("builds an http://127.0.0.1 URL from a Windows path", () => {
+    // Local files are served over a localhost HTTP server because WebView2
+    // blocks file:// and ignores custom protocols in child webviews.
+    expect(toFileUrl("C:\\Users\\Alex\\site\\index.html", 43210))
+      .toBe("http://127.0.0.1:43210/C:/Users/Alex/site/index.html");
   });
 
-  it("builds a localfile:// URL from a Unix path", () => {
-    expect(toFileUrl("/home/alex/site/index.html"))
-      .toBe("localfile:///home/alex/site/index.html");
+  it("builds an http://127.0.0.1 URL from a Unix path", () => {
+    expect(toFileUrl("/home/alex/site/index.html", 43210))
+      .toBe("http://127.0.0.1:43210/home/alex/site/index.html");
+  });
+
+  it("URL-encodes spaces and special chars in the path", () => {
+    // Spaces (e.g. "Temp Demo") must be encoded so the HTTP path is valid.
+    expect(toFileUrl("C:\\Users\\Alex\\Temp Demo\\index.html", 43210))
+      .toBe("http://127.0.0.1:43210/C:/Users/Alex/Temp%20Demo/index.html");
+  });
+
+  it("never emits file:// or localfile:// (those are blocked by the webview)", () => {
+    expect(toFileUrl("C:\\x.html", 43210)).not.toMatch(/^(file|localfile):\/\//);
   });
 
   it("normalizes forward slashes in mixed input", () => {
-    expect(toFileUrl("C:/Users/Alex/index.html"))
-      .toBe("localfile:///C:/Users/Alex/index.html");
-  });
-
-  it("always emits the localfile scheme (never file://)", () => {
-    expect(toFileUrl("C:\\x.html")).not.toMatch(/^file:\/\//);
-    expect(toFileUrl("/home/x.html")).toMatch(/^localfile:\/\//);
+    expect(toFileUrl("C:/Users/Alex/index.html", 43210))
+      .toBe("http://127.0.0.1:43210/C:/Users/Alex/index.html");
   });
 });
 

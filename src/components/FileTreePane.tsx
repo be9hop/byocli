@@ -10,8 +10,11 @@ import { IconButton } from "./IconButton";
 type Props = {
   workspaceName: string;
   root: string;
-  /// Fired when a browser-renderable file is double-clicked. The argument is a
-  /// `file://` URL the parent passes to its browser pane.
+  /// Port of the localhost file server. 0 means the server isn't running
+  /// (non-Tauri dev fallback) — in that case double-click-to-open is disabled.
+  fileServerPort: number;
+  /// Fired when a browser-renderable file is double-clicked. The argument is an
+  /// `http://127.0.0.1:port/...` URL the parent passes to its browser pane.
   onOpenInBrowser?: (url: string) => void;
 };
 
@@ -22,6 +25,7 @@ type TreeNodeProps = {
   selectedPath: string | null;
   onSelect: (path: string) => void;
   onOpenInBrowser?: (url: string) => void;
+  fileServerPort: number;
   refreshToken: number;
 };
 
@@ -39,20 +43,26 @@ export function isBrowserOpenable(name: string): boolean {
   return ext ? BROWSER_OPENABLE_EXTENSIONS.has(ext) : false;
 }
 
-/// Build a `localfile://` URL from an absolute path. We use a custom protocol
-/// (registered in src-tauri/src/lib.rs) instead of `file://` because WebView2
-/// blocks direct file:// navigation from external origins for security — it
-/// mangles the URL into `file:////?/C:/...` and returns ERR_TOO_MANY_REDIRECTS.
-/// The `localfile` scheme routes through a Rust handler that reads the file
-/// from disk and returns it with a proper content-type.
+/// Build a localhost HTTP URL for a local file. WebView2 blocks direct
+/// `file://` navigation from external webview origins and doesn't reliably
+/// honor Tauri's registered custom protocols in child webviews, so we serve
+/// local files over a tiny localhost HTTP server (started by the Rust backend).
+/// `http://127.0.0.1` is an origin all webviews universally allow.
 ///
-/// Windows paths (C:\\...) become `localfile:///C:/...`; Unix paths
-/// (/home/...) become `localfile:///home/...`. Three slashes (empty host) is
-/// the canonical form.
-export function toFileUrl(path: string): string {
+/// The path is the absolute filesystem path with backslashes normalized to
+/// forward slashes, URL-encoded so spaces and special chars survive transit.
+export function toFileUrl(path: string, port: number): string {
   const normalized = path.replace(/\\/g, "/");
-  const withLeadingSlash = normalized.startsWith("/") ? normalized : `/${normalized}`;
-  return `localfile://${withLeadingSlash}`;
+  // Encode only characters that are unsafe in a URL path: space and anything
+  // outside the unreserved set. Preserve `/` and `:` (the Windows drive
+  // separator) so paths stay readable.
+  const encoded = normalized.replace(/[^A-Za-z0-9\-._~!$&'()*+,;=:/@]/g, (ch) =>
+    encodeURIComponent(ch)
+  );
+  // Collapse any leading slashes to exactly one, so the URL path always starts
+  // with a single `/`. Windows `C:/x` → `/C:/x`; Unix `/home/x` → `/home/x`.
+  const pathPart = `/${encoded.replace(/^\/+/, "")}`;
+  return `http://127.0.0.1:${port}${pathPart}`;
 }
 
 function fileIcon(name: string) {
@@ -76,7 +86,7 @@ function displayRelativePath(root: string, path: string) {
 }
 
 const TreeNode = memo(function TreeNode({
-  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, refreshToken
+  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, fileServerPort, refreshToken
 }: TreeNodeProps) {
   const directory = entry.kind === "directory";
   const [expanded, setExpanded] = useState(false);
@@ -122,8 +132,10 @@ const TreeNode = memo(function TreeNode({
         onDoubleClick={() => {
           // Double-click a browser-renderable file to open it in the browser
           // split. Directories and code files keep single-click behavior.
-          if (!directory && isBrowserOpenable(entry.name) && onOpenInBrowser) {
-            onOpenInBrowser(toFileUrl(entry.path));
+          // Guarded on fileServerPort > 0 so the non-Tauri dev fallback (no
+          // server running) silently no-ops instead of building a broken URL.
+          if (!directory && fileServerPort > 0 && isBrowserOpenable(entry.name) && onOpenInBrowser) {
+            onOpenInBrowser(toFileUrl(entry.path, fileServerPort));
           }
         }}
         title={entry.path}
@@ -152,6 +164,7 @@ const TreeNode = memo(function TreeNode({
               selectedPath={selectedPath}
               onSelect={onSelect}
               onOpenInBrowser={onOpenInBrowser}
+              fileServerPort={fileServerPort}
               refreshToken={refreshToken}
             />
           ))}
@@ -166,7 +179,7 @@ const TreeNode = memo(function TreeNode({
   );
 });
 
-export const FileTreePane = memo(function FileTreePane({ workspaceName, root, onOpenInBrowser }: Props) {
+export const FileTreePane = memo(function FileTreePane({ workspaceName, root, fileServerPort, onOpenInBrowser }: Props) {
   const [entries, setEntries] = useState<FileTreeEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -228,6 +241,7 @@ export const FileTreePane = memo(function FileTreePane({ workspaceName, root, on
                 selectedPath={selectedPath}
                 onSelect={setSelectedPath}
                 onOpenInBrowser={onOpenInBrowser}
+                fileServerPort={fileServerPort}
                 refreshToken={refreshToken}
               />
             ))}

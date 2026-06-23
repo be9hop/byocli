@@ -105,11 +105,12 @@
   --hover: rgba(15, 23, 42, 0.04);
   --active: rgba(15, 23, 42, 0.08);
 
-  /* Accent — teal with a richer soft tint so accent-filled elements (active
-     states, badges) have more presence on white. */
-  --accent: #0d9b78;
+  /* Accent — a vivid, saturated green (electric green) with WCAG AA contrast on
+     white. Keeps the BYOCLI green identity but punches harder than the muted
+     teal of the first pass. */
+  --accent: #16a34a;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(13, 155, 120, 0.14);
+  --accent-soft: rgba(22, 163, 74, 0.14);
 
   /* Shadow — slightly more present than the first pass for elevation depth. */
   --shadow-color: rgba(15, 23, 42, 0.12);
