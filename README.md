@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/byocli-logo.png" alt="BYOCLI" width="120" />
+<img src="public/byocli-logo-black.png" alt="BYOCLI" width="120" />
 
 # BYOCLI
 
@@ -76,20 +76,11 @@ Every AI coding agent is great at *something*. BYOCLI doesn't pick one — it gi
 
 ## 📸 Screenshots
 
-> _Add screenshots here once you have a polished set. Drop PNGs into `docs/screenshots/` and reference them like:_
-
-<!-- 
 ### The workspace
-![Workspace view](docs/screenshots/workspace.png)
-
-### Visual annotation
-![Annotating a DOM element](docs/screenshots/annotation.png)
+![Workspace view — sidebar, terminal, browser split, and file tree](public/BYOCLI-Screenshot.png)
 
 ### Automations
-![Automations dashboard](docs/screenshots/automations.png)
--->
-
-_Screenshots coming soon._
+![Automations dashboard — schedules, run history, and output capture](public/BYOCLI-Automation-Screenshot.png)
 
 ---
 
@@ -204,12 +195,9 @@ BYOCLI is a **Tauri 2** app: a React 19 + Vite + TypeScript frontend running in 
 
 ## 🗺️ Roadmap
 
-- [ ] Pre-built installers for macOS (universal) and Linux (.deb / .AppImage)
-- [ ] Per-workspace saved scrollback restoration (beyond agent `--resume`)
-- [ ] Annotation library — reuse captured selectors across runs
-- [ ] Automation triggers beyond schedule (file watch, webhook)
-- [ ] Plugin API for custom terminal profiles
-- [ ] Telemetry-offline export of run history
+- [ ] macOS & Linux pre-built installers
+- [ ] More agent CLI presets out of the box
+- [ ] Polish & accessibility pass
 
 Have an idea? [Open a discussion](../../discussions) or an issue.
 
@@ -250,9 +238,3 @@ Built on the shoulders of giants:
 - [xterm.js](https://github.com/xtermjs/xterm.js) — the terminal frontend
 - [portable-pty](https://crates.io/crates/portable-pty) — cross-platform PTY for Rust
 - Every AI coding agent community for building the tools BYOCLI hosts
-
-<div align="center">
-
-_Made with focus, not frenzy._
-
-</div>
