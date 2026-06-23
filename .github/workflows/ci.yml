@@ -1,0 +1,94 @@
+name: CI
+
+# Runs on every push to any branch and on every PR targeting main. This catches
+# regressions before code lands — the frontend tests, the Rust unit tests, and
+# the production builds (which also serve as compile-only type checks) all have
+# to pass for a PR to be mergeable.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+# Cancel superseded runs on the same branch/PR. If you push twice in quick
+# succession, the first run stops — saves runner minutes and gets the latest
+# result faster.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- frontend
+  # Fast job: type-check, unit tests, production build. Runs on Ubuntu because
+  # the frontend has no platform-specific dependencies (the Tauri IPC layer is
+  # stubbed in tests via the isTauri() gate). Completes in ~30-60s.
+  frontend:
+    name: Frontend · typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # tsc -b compiles the app + vitest + node configs. Catches type errors
+      # across the whole project, including the test files (tsconfig.vitest.json).
+      - name: Type-check
+        run: npx tsc -b
+
+      # Vitest runs the 40+ unit tests covering the cron resolver, session
+      # normalization, path sandboxing helpers, and UUID fallback. The jsdom
+      # environment (configured in vite.config.ts) supports DOM-touching tests.
+      - name: Run tests
+        run: npm test
+
+      # The production build bundles the React app into dist/. This is what
+      # `tauri build` also runs (beforeBuildCommand), so a build failure here
+      # would break installer generation too.
+      - name: Production build
+        run: npm run build
+
+  # ----------------------------------------------------------------- backend
+  # Rust job: runs on Windows because the codebase is Windows-first — the PTY
+  # spawn path, the hidden-console allocation, and the automation PowerShell
+  # invocation all target Windows. The unit tests (path sandboxing, directory
+  # listing) are cross-platform but the build itself needs the Windows toolchain
+  # to validate the cfg(windows) code paths actually compile.
+  backend:
+    name: Backend · test · build (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache the cargo registry + target dir. Rust release builds are slow on
+      # first run; this cuts subsequent runs from ~5min to ~30s.
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # cargo test builds and runs the 8 unit tests in lib.rs's #[cfg(test)]
+      # module. These cover canonical_workspace_path (sandbox escape rejection)
+      # and read_workspace_directory (truncation, sorting, file-vs-dir).
+      - name: Run tests
+        working-directory: src-tauri
+        run: cargo test
+
+      # cargo build validates that the release config compiles. We don't build
+      # the full Tauri bundle (NSIS/MSI) in CI — that's heavy and is done
+      # locally for releases. A debug build is sufficient to catch compile
+      # errors in the cfg(windows) code paths.
+      - name: Build (debug)
+        working-directory: src-tauri
+        run: cargo build
