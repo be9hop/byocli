@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, AppWindow, Check, ChevronDown, Columns2, FolderGit2, FolderTree,
-  LoaderCircle, MessageSquareText, PanelLeftClose, PanelLeftOpen, Plus, Send,
+  AppWindow, ChevronDown, Columns2, FolderGit2, FolderTree,
+  MessageSquareText, PanelLeftClose, PanelLeftOpen, Plus, Send,
   TerminalSquare, X, Zap
 } from "lucide-react";
 import type {
@@ -55,11 +55,8 @@ export default function App() {
   const [pendingRemoval, setPendingRemoval] = useState<Workspace | null>(null);
   const [activeView, setActiveView] = useState<"workspace" | "automations">("workspace");
   const [automationTempDirectory, setAutomationTempDirectory] = useState("");
-  const [workspaceHistory, setWorkspaceHistory] = useState<string[]>([]);
-  const [workspaceHistoryIndex, setWorkspaceHistoryIndex] = useState(-1);
   const annotationInputRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState<"browser" | "files" | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "saving" | "dirty" | "error">("idle");
   const stateRef = useRef<AppState | null>(null);
   const dirtyRef = useRef(false);
   const savingRef = useRef<Promise<void> | null>(null);
@@ -133,12 +130,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!state?.activeWorkspaceId || workspaceHistory.length > 0) return;
-    setWorkspaceHistory([state.activeWorkspaceId]);
-    setWorkspaceHistoryIndex(0);
-  }, [state?.activeWorkspaceId, workspaceHistory.length]);
-
-  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -181,12 +172,9 @@ export default function App() {
 
     const snapshot = stateRef.current;
     dirtyRef.current = false;
-    setSaveStatus("saving");
     const save = saveState(snapshot)
-      .then(() => setSaveStatus(dirtyRef.current ? "dirty" : "saved"))
       .catch((error) => {
         dirtyRef.current = true;
-        setSaveStatus("error");
         console.error("Unable to save workspace state", error);
         throw error;
       })
@@ -201,18 +189,7 @@ export default function App() {
     if (!state) return;
     stateRef.current = state;
     dirtyRef.current = true;
-    setSaveStatus((status) => status === "saving" ? status : "dirty");
   }, [state]);
-
-  // Auto-hide the save toast once it confirms "saved" — the toast is otherwise
-  // always rendered and lingers indefinitely, which reads as a stuck element.
-  // It stays visible for dirty/saving/error (those states need attention) and
-  // fades out ~2.5s after a clean save.
-  useEffect(() => {
-    if (saveStatus !== "saved") return;
-    const timer = window.setTimeout(() => setSaveStatus("idle"), 2500);
-    return () => window.clearTimeout(timer);
-  }, [saveStatus]);
 
   // Apply the theme to the DOM and mirror it to localStorage for the next
   // boot's flash-prevention read. main.tsx does the initial synchronous apply;
@@ -410,21 +387,7 @@ export default function App() {
           : current.workspaces
       };
     });
-    setWorkspaceHistory((history) => {
-      if (history[workspaceHistoryIndex] === id) return history;
-      const next = [...history.slice(0, workspaceHistoryIndex + 1), id];
-      setWorkspaceHistoryIndex(next.length - 1);
-      return next;
-    });
-  }, [workspaceHistoryIndex]);
-
-  const goHistory = (direction: -1 | 1) => {
-    const nextIndex = workspaceHistoryIndex + direction;
-    const id = workspaceHistory[nextIndex];
-    if (!id) return;
-    setWorkspaceHistoryIndex(nextIndex);
-    setState((current) => current ? { ...current, activeWorkspaceId: id } : current);
-  };
+  }, []);
 
   const addWorkspace = async () => {
     const path = await chooseWorkspace();
@@ -435,11 +398,6 @@ export default function App() {
       workspaces: [...current.workspaces.filter((item) => item.path !== path), next],
       activeWorkspaceId: next.id
     }) : current);
-    setWorkspaceHistory((history) => {
-      const nextHistory = [...history.slice(0, workspaceHistoryIndex + 1), next.id];
-      setWorkspaceHistoryIndex(nextHistory.length - 1);
-      return nextHistory;
-    });
   };
   addWorkspaceRef.current = addWorkspace;
 
@@ -712,8 +670,6 @@ export default function App() {
       automations: state.automations.filter((item) => item.workspaceId !== pendingRemoval.id),
       automationRuns: state.automationRuns.filter((item) => !removedAutomationIds.has(item.automationId))
     });
-    setWorkspaceHistory(nextActive ? [nextActive] : []);
-    setWorkspaceHistoryIndex(nextActive ? 0 : -1);
     setPendingRemoval(null);
   };
 
@@ -828,11 +784,7 @@ export default function App() {
         automationsActive={activeView === "automations"}
         collapsed={state.sidebarCollapsed}
         theme={state.theme}
-        canGoBack={workspaceHistoryIndex > 0}
-        canGoForward={workspaceHistoryIndex >= 0 && workspaceHistoryIndex < workspaceHistory.length - 1}
         onExpand={() => setState((current) => current ? { ...current, sidebarCollapsed: false } : current)}
-        onBack={() => goHistory(-1)}
-        onForward={() => goHistory(1)}
         onSelect={selectWorkspace}
         onAdd={addWorkspace}
         onSearch={() => setSearchOpen(true)}
@@ -1210,23 +1162,12 @@ export default function App() {
               <FileTreePane
                 workspaceName={workspace.name}
                 root={workspace.path}
+                onOpenInBrowser={openBrowser}
               />
             </>
           )}
         </div>
       </main>
-      )}
-
-      {saveStatus !== "idle" && (
-        <button type="button" className={`restore-toast is-${saveStatus}`} onClick={() => void flushState(true)}>
-          {saveStatus === "saving" && <LoaderCircle size={13} className="save-spinner" />}
-          {saveStatus === "error" && <AlertTriangle size={13} />}
-          {saveStatus === "saved" && <Check size={13} />}
-          {saveStatus === "dirty" && <span className="unsaved-dot" />}
-          {saveStatus === "saving" ? "Saving workspace…" :
-            saveStatus === "error" ? "Workspace save failed — retry" :
-            saveStatus === "dirty" ? "Unsaved changes" : "Workspace saved"}
-        </button>
       )}
 
       {searchOpen && (

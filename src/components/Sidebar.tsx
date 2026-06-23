@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, ArrowRight, CalendarClock, Folder, FolderOpen, PanelLeftOpen, Plus,
+  CalendarClock, Folder, FolderOpen, PanelLeftOpen, Plus,
   Search, Settings2, TerminalSquare, Trash2
 } from "lucide-react";
 import { memo } from "react";
@@ -21,11 +21,7 @@ type Props = {
   automationsActive: boolean;
   collapsed: boolean;
   theme: Theme;
-  canGoBack: boolean;
-  canGoForward: boolean;
   onExpand: () => void;
-  onBack: () => void;
-  onForward: () => void;
   onSelect: (id: string) => void;
   onAdd: () => void;
   onSearch: () => void;
@@ -36,7 +32,7 @@ type Props = {
 };
 
 export const Sidebar = memo(function Sidebar({
-  workspaces, activeId, automationsActive, collapsed, theme, canGoBack, canGoForward, onExpand, onBack, onForward, onSelect,
+  workspaces, activeId, automationsActive, collapsed, theme, onExpand, onSelect,
   onAdd, onSearch, onAutomations, onSettings, onRemove, onOpenAppLink
 }: Props) {
   return (
@@ -50,14 +46,6 @@ export const Sidebar = memo(function Sidebar({
         ) : (
           <img className="brand-logo" src={logoForTheme(theme)} alt="BYOCLI" />
         )}
-        <div className="window-nav">
-          <IconButton label="Previous workspace" disabled={!canGoBack} onClick={onBack}>
-            <ArrowLeft size={14} />
-          </IconButton>
-          <IconButton label="Next workspace" disabled={!canGoForward} onClick={onForward}>
-            <ArrowRight size={14} />
-          </IconButton>
-        </div>
       </div>
 
       <nav className="primary-nav" aria-label="Primary">

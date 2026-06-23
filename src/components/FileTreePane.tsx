@@ -10,6 +10,9 @@ import { IconButton } from "./IconButton";
 type Props = {
   workspaceName: string;
   root: string;
+  /// Fired when a browser-renderable file is double-clicked. The argument is a
+  /// `file://` URL the parent passes to its browser pane.
+  onOpenInBrowser?: (url: string) => void;
 };
 
 type TreeNodeProps = {
@@ -18,8 +21,30 @@ type TreeNodeProps = {
   depth: number;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  onOpenInBrowser?: (url: string) => void;
   refreshToken: number;
 };
+
+/// Extensions a browser can render natively via a file:// URL. Double-clicking
+/// a file with one of these opens it in the browser split; everything else
+/// (code, configs, text) is left to single-click selection only.
+const BROWSER_OPENABLE_EXTENSIONS = new Set([
+  "html", "htm", "xhtml", "svg",
+  "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico",
+  "pdf"
+]);
+
+function isBrowserOpenable(name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase();
+  return ext ? BROWSER_OPENABLE_EXTENSIONS.has(ext) : false;
+}
+
+/// Build a `file://` URL from an absolute path. Windows paths (C:\\...) become
+/// `file:///C:/...`; Unix paths (/home/...) become `file:///home/...`.
+function toFileUrl(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  return `file://${normalized.startsWith("/") ? "" : "/"}${normalized}`;
+}
 
 function fileIcon(name: string) {
   const extension = name.split(".").pop()?.toLowerCase();
@@ -42,7 +67,7 @@ function displayRelativePath(root: string, path: string) {
 }
 
 const TreeNode = memo(function TreeNode({
-  entry, root, depth, selectedPath, onSelect, refreshToken
+  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, refreshToken
 }: TreeNodeProps) {
   const directory = entry.kind === "directory";
   const [expanded, setExpanded] = useState(false);
@@ -85,6 +110,13 @@ const TreeNode = memo(function TreeNode({
         className={`file-tree-row ${selectedPath === entry.path ? "is-selected" : ""}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={activate}
+        onDoubleClick={() => {
+          // Double-click a browser-renderable file to open it in the browser
+          // split. Directories and code files keep single-click behavior.
+          if (!directory && isBrowserOpenable(entry.name) && onOpenInBrowser) {
+            onOpenInBrowser(toFileUrl(entry.path));
+          }
+        }}
         title={entry.path}
       >
         <span className="file-tree-chevron">
@@ -110,6 +142,7 @@ const TreeNode = memo(function TreeNode({
               depth={depth + 1}
               selectedPath={selectedPath}
               onSelect={onSelect}
+              onOpenInBrowser={onOpenInBrowser}
               refreshToken={refreshToken}
             />
           ))}
@@ -124,7 +157,7 @@ const TreeNode = memo(function TreeNode({
   );
 });
 
-export const FileTreePane = memo(function FileTreePane({ workspaceName, root }: Props) {
+export const FileTreePane = memo(function FileTreePane({ workspaceName, root, onOpenInBrowser }: Props) {
   const [entries, setEntries] = useState<FileTreeEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,6 +218,7 @@ export const FileTreePane = memo(function FileTreePane({ workspaceName, root }: 
                 depth={0}
                 selectedPath={selectedPath}
                 onSelect={setSelectedPath}
+                onOpenInBrowser={onOpenInBrowser}
                 refreshToken={refreshToken}
               />
             ))}

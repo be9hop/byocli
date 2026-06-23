@@ -72,7 +72,7 @@ export function terminalThemeFor(theme: Theme) {
 /// meta so the OS title-bar matches.
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  const bg = theme === "light" ? "#f6f7f5" : "#000308";
+  const bg = theme === "light" ? "#eef0f3" : "#000308";
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
     meta = document.createElement("meta");

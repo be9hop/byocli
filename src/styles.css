@@ -38,6 +38,11 @@
   /* Shadow */
   --shadow-color: rgba(0, 0, 0, 0.55);
 
+  /* Decorative glow for the small profile dots in the tab bar — soft mint in
+     dark mode; the bright mint reads as a harsh halo on white, so light mode
+     uses a near-imperceptible ring instead. */
+  --dot-glow: 0 0 6px currentColor;
+
   /* Status */
   --danger: #d78e8e;
   --danger-strong: #b85450;
@@ -74,31 +79,39 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Surfaces — near-white with a hair of warmth */
-  --bg: #f6f7f5;
+  /* Surfaces — a cooler, slightly darker neutral background so pure-white
+     surfaces (cards, dialogs, inputs) lift off it with real depth. This is the
+     single biggest lever for a premium feel: flat white-on-white reads cheap. */
+  --bg: #eef0f3;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef0ed;
+  --surface-sunken: #e6e9ed;
 
-  /* Text */
-  --text: #1a2026;
-  --text-strong: #000308;
-  --text-muted: #56615d;
-  --text-faint: #8a948f;
+  /* Text — strong ink for headings, a cool slate for body */
+  --text: #1f2933;
+  --text-strong: #0b1220;
+  --text-muted: #52616b;
+  --text-faint: #8b96a0;
 
-  /* Borders & overlays — black tints instead of white tints */
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.15);
-  --hover: rgba(0, 0, 0, 0.035);
-  --active: rgba(0, 0, 0, 0.07);
+  /* Borders — stronger than dark mode so section boundaries are legible on
+     white. Faint 8% borders vanish against a bright surface. */
+  --border: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.18);
+  --hover: rgba(15, 23, 42, 0.04);
+  --active: rgba(15, 23, 42, 0.08);
 
-  /* Accent — mint darkened to a teal for WCAG AA contrast on white */
+  /* Accent — teal with a richer soft tint so accent-filled elements (active
+     states, badges) have more presence on white. */
   --accent: #0d9b78;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(13, 155, 120, 0.12);
+  --accent-soft: rgba(13, 155, 120, 0.14);
 
-  /* Shadow — softer on a light canvas */
-  --shadow-color: rgba(0, 0, 0, 0.1);
+  /* Shadow — slightly more present than the first pass for elevation depth. */
+  --shadow-color: rgba(15, 23, 42, 0.12);
+
+  /* No mint halo on white — a faint ring gives the dot definition without the
+     harsh glow the bright mint produces on a light surface. */
+  --dot-glow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 
   /* Status — darkened for contrast on white */
   --danger: #c0392b;
@@ -108,7 +121,7 @@
   --success: #2d8a5f;
 
   /* Legacy aliases re-derive from the overridden semantic tokens */
-  --panel-3: #eef0ed;
+  --panel-3: #e6e9ed;
 
   background: var(--bg);
 }
@@ -445,7 +458,7 @@ kbd {
 }
 .terminal-tab:hover, .browser-tab:hover { color: var(--text); }
 .terminal-tab > svg:last-child, .browser-tab > svg:last-child { margin-left: auto; flex: 0 0 auto; }
-.profile-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+.profile-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; box-shadow: var(--dot-glow); }
 .new-session { position: relative; display: flex; align-items: center; padding: 4px 6px; }
 .new-terminal-button,
 .run-command-button {
@@ -1047,31 +1060,6 @@ kbd {
 .annotation-actions .annotation-add:hover { color: var(--text-strong); background: var(--surface-raised); }
 .annotation-actions button:hover { background: var(--accent); }
 .annotation-actions button:disabled { color: var(--text-muted); background: var(--surface-raised); cursor: default; }
-
-.restore-toast {
-  position: fixed;
-  z-index: 60;
-  right: 12px;
-  bottom: 9px;
-  height: 25px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 5px;
-  color: var(--text-muted);
-  background: rgba(32,34,32,.88);
-  box-shadow: 0 0 0 1px var(--line);
-  font-size: 9.5px;
-  cursor: pointer;
-}
-.restore-toast:hover { color: var(--text-muted); }
-.restore-toast.is-saved { color: var(--success); }
-.restore-toast.is-error { color: var(--danger); }
-.unsaved-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.save-spinner { animation: save-spin 800ms linear infinite; }
-@keyframes save-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 205px minmax(0, 1fr); }
