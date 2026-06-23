@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BYOCLI",
+  "version": "0.1.3",
+  "identifier": "app.byocli.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "BYOCLI — Bring Your Own CLI",
+        "width": 1920,
+        "height": 1080,
+        "minWidth": 920,
+        "minHeight": 620,
+        "center": true,
+        "maximized": false,
+        "decorations": true,
+        "backgroundColor": "#000308"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http: asset:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; frame-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+[[permission]]
+identifier = "allow-capture-annotation"
+description = "Allows an embedded browser webview to send a selected DOM element back to BYOCLI."
+commands.allow = ["capture_annotation"]
+
+[[permission]]
+identifier = "allow-byocli-commands"
+description = "Allows the trusted BYOCLI application webview to manage workspaces, terminals, browser panes, and persistence."
+commands.allow = [
+  "load_app_state",
+  "save_app_state",
+  "get_automation_temp_directory",
+  "get_running_terminal_session_ids",
+  "spawn_terminal",
+  "write_terminal",
+  "resize_terminal",
+  "kill_terminal",
+  "open_external",
+  "list_workspace_directory",
+  "open_browser_webview",
+  "navigate_browser_webview",
+  "resize_browser_webview",
+  "close_browser_webview",
+  "set_browser_webview_visibility",
+  "browser_webview_action",
+  "capture_annotation",
+  "set_annotation_mode"
+]

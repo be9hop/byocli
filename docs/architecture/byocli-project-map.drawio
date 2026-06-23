@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="30.2.4">
+  <diagram name="BYOCLI-Project-Map">
+    <mxGraphModel dx="2000" dy="1700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="BYOCLI — Project Architecture Map&#xa;Tauri 2 desktop app: React 19 + Vite frontend (main webview)  ·  Rust backend, single file src-tauri/src/lib.rs" style="text;html=1;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1820" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ============ FRONTEND TIER ============ -->
+        <mxCell id="fe_tier" value="Frontend — React 19 · Vite · xterm.js   (runs in the Tauri main webview; all state in App.tsx, no Redux/Context)" style="swimlane;startSize=40;whiteSpace=wrap;html=1;fillColor=#eef6fb;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;swimlaneFillColor=#eef6fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="1820" height="600" as="geometry" />
+        </mxCell>
+
+        <!-- App.tsx hub -->
+        <mxCell id="fe_app" value="App.tsx&#xa;(root component)&#xa;owns AppState +&#xa;all effects / refs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;" vertex="1" parent="fe_tier">
+          <mxGeometry x="760" y="60" width="300" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_sidebar" value="Sidebar.tsx&#xa;workspace list · nav ·&#xa;brand · collapse rail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="60" y="70" width="210" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_automations" value="AutomationsView.tsx&#xa;CRUD · run history ·&#xa;scheduler UI (full screen)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="1520" y="60" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_dialogs" value="Dialogs&#xa;SettingsDialog · SearchDialog (Ctrl+K)&#xa;ConfirmDialog · IconButton" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;dashed=1;" vertex="1" parent="fe_tier">
+          <mxGeometry x="1520" y="180" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Workspace panes (row 2) -->
+        <mxCell id="fe_term" value="TerminalPane.tsx&#xa;xterm.js + fit / web-links addons&#xa;agent-CLI detect (claude/codex/...)&#xa;resume-arg retry · bracketed paste" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="320" y="220" width="330" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_browser" value="BrowserPane.tsx&#xa;native webview split&#xa;annotation toolbar&#xa;Open externally / files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="745" y="220" width="330" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_files" value="FileTreePane.tsx&#xa;read-only recursive tree&#xa;lazy folder expand&#xa;memoized" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="1170" y="220" width="300" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- lib row (row 3) -->
+        <mxCell id="fe_defaults" value="lib/defaults.ts&#xa;createDefaultState&#xa;createWorkspace&#xa;normalizeState / merge profiles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="150" y="420" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_platform" value="lib/platform.ts  (IPC seam)&#xa;invokeNative() / listenNative()&#xa;browser + terminal drivers&#xa;non-Tauri localStorage fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="510" y="420" width="330" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_automations_lib" value="lib/automations.ts&#xa;nextRunForSchedule&#xa;interval / daily /&#xa;weekly / 5-field cron" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="940" y="420" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_client_sched" value="Client scheduler&#xa;15s setInterval + automation-tick&#xa;overlap / retry / timeout policy&#xa;run history (last 150)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="fe_tier">
+          <mxGeometry x="1260" y="420" width="290" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Frontend internal edges -->
+        <mxCell id="e_app_term" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_term">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_browser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_files" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.8;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_files">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_sidebar" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.4;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_sidebar">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_autoview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_automations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_dialogs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="fe_app" target="fe_dialogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_defaults" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_defaults">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_sched" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_app" target="fe_client_sched">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_term_plat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_term" target="fe_platform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_browser_plat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_browser" target="fe_platform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_files_plat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_files" target="fe_platform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sched_automations" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_client_sched" target="fe_automations_lib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sched_plat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.2;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="fe_client_sched" target="fe_platform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ IPC TIER ============ -->
+        <mxCell id="ipc_tier" value="Tauri IPC boundary" style="swimlane;startSize=40;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d6b656;fontStyle=1;fontSize=13;swimlaneFillColor=#fff8e1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="1820" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ipc_invoke" value="invoke() — 18 commands&#xa;load/save_app_state · spawn/write/resize/kill_terminal · get_running_terminal_session_ids · list_workspace_directory · open/navigate/resize/close_browser_webview · set_browser_webview_visibility · browser_webview_action · set_annotation_mode · capture_annotation · get_automation_temp_directory · open_external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="ipc_tier">
+          <mxGeometry x="60" y="50" width="820" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ipc_events" value="events (emit → listen)&#xa;terminal-output · terminal-exit · browser-annotation · automation-tick (15s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="ipc_tier">
+          <mxGeometry x="940" y="50" width="820" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- IPC seam arrows -->
+        <mxCell id="e_plat_invoke" value="invoke() 18 cmds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#6c8ebf;" edge="1" parent="1" source="fe_platform" target="ipc_invoke">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_invoke_run" value="generate_handler!" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#6c8ebf;" edge="1" parent="1" source="ipc_invoke" target="be_run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_run_events" value="emit 4 events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.7;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=10;strokeColor=#82b366;" edge="1" parent="1" source="be_run" target="ipc_events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_events_plat" value="listen() 4 events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.2;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;strokeColor=#82b366;" edge="1" parent="1" source="ipc_events" target="fe_platform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ BACKEND TIER ============ -->
+        <mxCell id="be_tier" value="Backend — Rust · Tauri 2 · rusqlite · portable-pty   (entire backend is one file: src-tauri/src/lib.rs; main.rs just calls run())" style="swimlane;startSize=40;whiteSpace=wrap;html=1;fillColor=#eef6ee;strokeColor=#82b366;fontStyle=1;fontSize=13;swimlaneFillColor=#eef6ee;" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="1820" height="540" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_run" value="run()&#xa;tauri::Builder — registers&#xa;dialog plugin · managed state&#xa;.setup (db, tray, scheduler)&#xa;invoke_handler + window event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="700" y="50" width="380" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_terminal" value="TerminalState&#xa;HashMap&lt;id, TerminalProcess&gt;&#xa;portable-pty master/writer/child&#xa;reader thread →&#xa;emit terminal-output / exit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="60" y="210" width="320" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_db" value="DatabaseState&#xa;Mutex&lt;rusqlite::Connection&gt;&#xa;WAL mode · key/value table&#xa;load_app_state / save_app_state&#xa;(legacy relay.sqlite3 migration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="430" y="210" width="320" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_browser" value="Browser webview mgmt&#xa;WebviewBuilder.add_child (Win)&#xa;media-muting init script&#xa;set_annotation_mode&#xa;(injects JS capture payload)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="800" y="210" width="340" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_sched" value="Scheduler thread&#xa;std::thread loop&#xa;sleep 15s →&#xa;emit automation-tick&#xa;(logic lives in FE)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="1190" y="210" width="300" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_tray" value="System tray&#xa;TrayIconBuilder&#xa;open / quit menu&#xa;close → hide to tray" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="be_tier">
+          <mxGeometry x="1540" y="210" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_tempdir" value="get_automation_temp_directory → %TEMP%/BYOCLI/automations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="be_tier">
+          <mxGeometry x="1190" y="380" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Backend internal edges (run -> subsystems) -->
+        <mxCell id="e_run_term" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.08;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_run" target="be_terminal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_run_db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_run" target="be_db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_run_browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_run" target="be_browser">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_run_sched" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_run" target="be_sched">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_run_tray" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.92;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_run" target="be_tray">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sched_tempdir" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="be_sched" target="be_tempdir">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ EXTERNAL / OS ============ -->
+        <mxCell id="ext_label" value="External / OS resources" style="text;html=1;align=left;verticalAlign=middle;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1460" width="400" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_pty" value="PowerShell PTY&#xa;(portable-pty child)&#xa;one per terminal tab&#xa;— env vars / live process&#xa;do not survive app exit" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;boundedLbl=1;backgroundOutline=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1500" width="320" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_sqlite" value="byocli.sqlite3&#xa;app_data_dir/&#xa;table app_state (KV)&#xa;single JSON blob&#xa;key='app'" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;boundedLbl=1;backgroundOutline=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="470" y="1500" width="300" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_webview" value="Child browser webviews&#xa;(Windows WebView)&#xa;muted media / audio&#xa;annotation capture JS" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;boundedLbl=1;backgroundOutline=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1500" width="300" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_temp" value="OS temp / BYOCLI Temp&#xa;TEMP / TMP / TMPDIR&#xa;automation work dir&#xa;file-free jobs" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;boundedLbl=1;backgroundOutline=1;size=10;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1500" width="300" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Backend -> External edges -->
+        <mxCell id="e_term_pty" value="spawns" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#666666;" edge="1" parent="1" source="be_terminal" target="ext_pty">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_db_sqlite" value="reads / writes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#666666;" edge="1" parent="1" source="be_db" target="ext_sqlite">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_browser_webview" value="add_child" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#666666;" edge="1" parent="1" source="be_browser" target="ext_webview">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_tempdir_temp" value="resolves" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;strokeColor=#666666;" edge="1" parent="1" source="be_tempdir" target="ext_temp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
