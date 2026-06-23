@@ -1,6 +1,6 @@
-import { Plus, Settings2, Star, TerminalSquare, Trash2, Workflow, X, Zap } from "lucide-react";
+import { Plus, Settings2, Star, Sun, TerminalSquare, Trash2, Workflow, X, Zap } from "lucide-react";
 import { useState } from "react";
-import type { TerminalAction, TerminalProfile } from "../types";
+import type { TerminalAction, TerminalProfile, Theme } from "../types";
 import { uuid } from "../lib/uuid";
 import { IconButton } from "./IconButton";
 
@@ -13,10 +13,12 @@ type Props = {
   terminalFontSize: number;
   terminalLineHeight: number;
   terminalActions: TerminalAction[];
+  theme: Theme;
   onDefaultProfileChange: (profileId: string) => void;
   onTerminalDisplayChange: (fontSize: number, lineHeight: number) => void;
   onProfilesChange: (profiles: TerminalProfile[]) => void;
   onTerminalActionsChange: (actions: TerminalAction[]) => void;
+  onThemeChange: (theme: Theme) => void;
   onClose: () => void;
 };
 
@@ -24,7 +26,8 @@ const builtInProfiles = new Set(["shell", "claude", "codex", "gemini", "omp", "a
 
 export function SettingsDialog({
   initialSection, profiles, defaultProfileId, terminalFontSize, terminalLineHeight, terminalActions,
-  onDefaultProfileChange, onTerminalDisplayChange, onProfilesChange, onTerminalActionsChange, onClose
+  theme, onDefaultProfileChange, onTerminalDisplayChange, onProfilesChange, onTerminalActionsChange,
+  onThemeChange, onClose
 }: Props) {
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [actionName, setActionName] = useState("");
@@ -110,6 +113,23 @@ export function SettingsDialog({
 
           {section === "general" && (
             <div className="settings-section">
+              <section className="settings-group">
+                <div className="settings-group-heading">
+                  <Sun size={16} />
+                  <div><strong>Appearance</strong><small>Choose how BYOCLI looks.</small></div>
+                </div>
+                <div className="settings-grid">
+                  <label className="settings-field">
+                    <span>Theme</span>
+                    <small>Light or dark interface. Applies instantly and is saved per workspace.</small>
+                    <select value={theme} onChange={(event) => onThemeChange(event.target.value as Theme)}>
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
               <section className="settings-group">
                 <div className="settings-group-heading">
                   <TerminalSquare size={16} />

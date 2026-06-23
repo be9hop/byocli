@@ -3,7 +3,8 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
-import type { TerminalProfile, TerminalSession, Workspace } from "../types";
+import type { TerminalProfile, TerminalSession, Theme, Workspace } from "../types";
+import { terminalThemeFor } from "../lib/theme";
 import {
   isTauri,
   onTerminalExit,
@@ -19,6 +20,7 @@ type Props = {
   profile: TerminalProfile;
   fontSize: number;
   lineHeight: number;
+  theme: Theme;
   onOpenUrl: (url: string) => void;
   onLaunched: (sessionId: string) => void;
   onAgentDetected: (sessionId: string, profileId: string) => void;
@@ -48,7 +50,7 @@ const agentCommands: Record<string, string> = {
 };
 
 export function TerminalPane({
-  workspace, session, profile, fontSize, lineHeight, onOpenUrl, onLaunched, onAgentDetected, onCommandDispatched
+  workspace, session, profile, fontSize, lineHeight, theme, onOpenUrl, onLaunched, onAgentDetected, onCommandDispatched
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -66,25 +68,7 @@ export function TerminalPane({
       letterSpacing: 0.1,
       scrollback: 8000,
       allowTransparency: true,
-      theme: {
-        background: "#000308",
-        foreground: "#f4f7f6",
-        cursor: "#17f5c1",
-        cursorAccent: "#000308",
-        selectionBackground: "#123a31",
-        black: "#03090b",
-        red: "#ef8f8f",
-        green: "#17f5c1",
-        yellow: "#a9c9b9",
-        blue: "#76a997",
-        magenta: "#c39bdd",
-        cyan: "#17f5c1",
-        white: "#f4f7f6",
-        brightBlack: "#668478",
-        brightGreen: "#17f5c1",
-        brightCyan: "#17f5c1",
-        brightWhite: "#f0fff8"
-      }
+      theme: terminalThemeFor(theme)
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -222,6 +206,14 @@ export function TerminalPane({
       // fit() can throw if the terminal is mid-dispose; safe to ignore.
     }
   }, [fontSize, lineHeight, session.id]);
+
+  // Apply the xterm palette live when the app theme changes, without tearing
+  // down the terminal or re-spawning the PTY (same pattern as the font effect).
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    terminal.options.theme = terminalThemeFor(theme);
+  }, [theme]);
 
   return <div ref={containerRef} className="terminal-surface" aria-label={`${session.title} terminal`} />;
 }

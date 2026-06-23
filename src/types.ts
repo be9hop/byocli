@@ -98,6 +98,8 @@ export type Workspace = {
   filesRatio: number;
 };
 
+export type Theme = "light" | "dark";
+
 export type AppState = {
   workspaces: Workspace[];
   activeWorkspaceId: string;
@@ -109,6 +111,7 @@ export type AppState = {
   automations: Automation[];
   automationRuns: AutomationRun[];
   sidebarCollapsed: boolean;
+  theme: Theme;
 };
 
 export type TerminalOutput = {

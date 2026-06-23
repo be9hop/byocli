@@ -24,6 +24,7 @@ import { SettingsDialog, type SettingsSection } from "./components/SettingsDialo
 import { AutomationsView } from "./components/AutomationsView";
 import { nextRunForSchedule } from "./lib/automations";
 import { uuid } from "./lib/uuid";
+import { applyTheme, logoForTheme, persistTheme } from "./lib/theme";
 import "./styles.css";
 
 function tabTitle(url: string) {
@@ -212,6 +213,15 @@ export default function App() {
     const timer = window.setTimeout(() => setSaveStatus("idle"), 2500);
     return () => window.clearTimeout(timer);
   }, [saveStatus]);
+
+  // Apply the theme to the DOM and mirror it to localStorage for the next
+  // boot's flash-prevention read. main.tsx does the initial synchronous apply;
+  // this effect keeps the DOM in sync whenever the user changes the theme.
+  useEffect(() => {
+    if (!state?.theme) return;
+    applyTheme(state.theme);
+    persistTheme(state.theme);
+  }, [state?.theme]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -807,7 +817,7 @@ export default function App() {
   }, [workspace]);
 
   if (!state || !workspace || !session || !profile) {
-    return <div className="boot-screen"><img className="boot-logo" src="/byocli-logo.png" alt="BYOCLI" /><span>Restoring workspace…</span></div>;
+    return <div className="boot-screen"><img className="boot-logo" src={logoForTheme(state?.theme ?? "dark")} alt="BYOCLI" /><span>Restoring workspace…</span></div>;
   }
 
   return (
@@ -817,6 +827,7 @@ export default function App() {
         activeId={workspace.id}
         automationsActive={activeView === "automations"}
         collapsed={state.sidebarCollapsed}
+        theme={state.theme}
         canGoBack={workspaceHistoryIndex > 0}
         canGoForward={workspaceHistoryIndex >= 0 && workspaceHistoryIndex < workspaceHistory.length - 1}
         onExpand={() => setState((current) => current ? { ...current, sidebarCollapsed: false } : current)}
@@ -968,6 +979,7 @@ export default function App() {
               profile={profile}
               fontSize={state.terminalFontSize}
               lineHeight={state.terminalLineHeight}
+              theme={state.theme}
               onOpenUrl={openBrowser}
               onLaunched={(sessionId) => updateWorkspace(workspace.id, (item) => ({
                 ...item,
@@ -1236,6 +1248,7 @@ export default function App() {
           terminalFontSize={state.terminalFontSize}
           terminalLineHeight={state.terminalLineHeight}
           terminalActions={state.terminalActions}
+          theme={state.theme}
           onDefaultProfileChange={(defaultProfileId) =>
             setState((current) => current ? { ...current, defaultProfileId } : current)
           }
@@ -1246,6 +1259,7 @@ export default function App() {
           onTerminalActionsChange={(terminalActions) =>
             setState((current) => current ? { ...current, terminalActions } : current)
           }
+          onThemeChange={(theme) => setState((current) => current ? { ...current, theme } : current)}
           onClose={() => setSettingsSection(null)}
         />
       )}

@@ -100,6 +100,9 @@ export function normalizeState(state: AppState): AppState {
     ...state,
     profiles: mergedProfiles,
     sidebarCollapsed: state.sidebarCollapsed ?? false,
+    // Explicit validation: a corrupt saved value (e.g. "purple") must fall back
+    // to the dark default rather than silently propagating.
+    theme: state.theme === "light" || state.theme === "dark" ? state.theme : "dark",
     defaultProfileId: mergedProfiles.some((profile) => profile.id === state.defaultProfileId)
       ? state.defaultProfileId
       : "shell",
@@ -138,6 +141,7 @@ export function createDefaultState(): AppState {
     terminalActions,
     automations: [],
     automationRuns: [],
-    sidebarCollapsed: false
+    sidebarCollapsed: false,
+    theme: "dark"
   };
 }

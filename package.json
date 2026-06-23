@@ -2,7 +2,7 @@
   "name": "byocli",
   "description": "Bring Your Own CLI — a CLI-agnostic desktop coding workspace",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -3,7 +3,8 @@ import {
   Search, Settings2, TerminalSquare, Trash2
 } from "lucide-react";
 import { memo } from "react";
-import type { Workspace } from "../types";
+import type { Theme, Workspace } from "../types";
+import { logoForTheme } from "../lib/theme";
 import { IconButton } from "./IconButton";
 
 /// The minimal slice of a Workspace that the Sidebar actually renders. Accepting
@@ -19,6 +20,7 @@ type Props = {
   activeId: string;
   automationsActive: boolean;
   collapsed: boolean;
+  theme: Theme;
   canGoBack: boolean;
   canGoForward: boolean;
   onExpand: () => void;
@@ -34,7 +36,7 @@ type Props = {
 };
 
 export const Sidebar = memo(function Sidebar({
-  workspaces, activeId, automationsActive, collapsed, canGoBack, canGoForward, onExpand, onBack, onForward, onSelect,
+  workspaces, activeId, automationsActive, collapsed, theme, canGoBack, canGoForward, onExpand, onBack, onForward, onSelect,
   onAdd, onSearch, onAutomations, onSettings, onRemove, onOpenAppLink
 }: Props) {
   return (
@@ -46,7 +48,7 @@ export const Sidebar = memo(function Sidebar({
             <PanelLeftOpen className="sidebar-expand-glyph" size={14} />
           </IconButton>
         ) : (
-          <img className="brand-logo" src="/byocli-logo.png" alt="BYOCLI" />
+          <img className="brand-logo" src={logoForTheme(theme)} alt="BYOCLI" />
         )}
         <div className="window-nav">
           <IconButton label="Previous workspace" disabled={!canGoBack} onClick={onBack}>
