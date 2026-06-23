@@ -2,27 +2,27 @@ import { describe, expect, it } from "vitest";
 import { isBrowserOpenable, toFileUrl } from "./FileTreePane";
 
 describe("toFileUrl", () => {
-  it("builds a canonical 3-slash file URL from a Windows path", () => {
-    // The regression this guards: a 2-slash `file://C:/...` got mangled by the
-    // webview into `https://file:////?/C:/...`. Three slashes is canonical.
+  it("builds a canonical localfile:// URL from a Windows path", () => {
+    // Uses the custom localfile:// protocol (not file://) because WebView2
+    // blocks direct file:// navigation from external origins. The Rust
+    // backend registers a localfile scheme handler that reads from disk.
     expect(toFileUrl("C:\\Users\\Alex\\site\\index.html"))
-      .toBe("file:///C:/Users/Alex/site/index.html");
+      .toBe("localfile:///C:/Users/Alex/site/index.html");
   });
 
-  it("builds a 3-slash file URL from a Unix path", () => {
+  it("builds a localfile:// URL from a Unix path", () => {
     expect(toFileUrl("/home/alex/site/index.html"))
-      .toBe("file:///home/alex/site/index.html");
+      .toBe("localfile:///home/alex/site/index.html");
   });
 
   it("normalizes forward slashes in mixed input", () => {
     expect(toFileUrl("C:/Users/Alex/index.html"))
-      .toBe("file:///C:/Users/Alex/index.html");
+      .toBe("localfile:///C:/Users/Alex/index.html");
   });
 
-  it("does not double-slash a path that already has a leading slash", () => {
-    // file:// + /home/... = file:///home/... (exactly three, not four)
-    expect(toFileUrl("/var/www/index.html").match(/\//g)!.length)
-      .toBe("file:///var/www/index.html".match(/\//g)!.length);
+  it("always emits the localfile scheme (never file://)", () => {
+    expect(toFileUrl("C:\\x.html")).not.toMatch(/^file:\/\//);
+    expect(toFileUrl("/home/x.html")).toMatch(/^localfile:\/\//);
   });
 });
 

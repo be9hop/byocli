@@ -66,6 +66,28 @@ struct TerminalProcess {
 /// "killed by signal" encoding (128 + signal) with SIGKILL (9) = 137.
 const KILLED_EXIT_CODE: u32 = 137;
 
+/// Minimal content-type guesser for the localfile protocol. Covers the
+/// browser-renderable types the file-tree double-click opens.
+fn guess_mime(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().map(str::to_ascii_lowercase);
+    match ext.as_deref() {
+        Some("html") | Some("htm") | Some("xhtml") => "text/html; charset=utf-8",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("avif") => "image/avif",
+        Some("bmp") => "image/bmp",
+        Some("ico") => "image/x-icon",
+        Some("pdf") => "application/pdf",
+        Some("css") => "text/css; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("json") => "application/json; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}
+
 struct TerminalState {
     processes: Arc<Mutex<HashMap<String, TerminalProcess>>>,
     /// Session ids explicitly killed via `kill_terminal`. Their exit is expected
@@ -910,6 +932,51 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(TerminalState::default())
+        // Register a custom `localfile://` protocol so the browser webview can
+        // load files from disk. WebView2 blocks direct `file://` navigation from
+        // external origins for security (it mangles the URL into `file:////?/C:/`
+        // and ERR_TOO_MANY_REDIRECTS). Routing through a registered scheme that
+        // we control sidesteps the restriction: the frontend emits
+        // `localfile://C/path/to/index.html`, and this handler reads the file
+        // from disk and returns it with an appropriate content-type. Works for
+        // HTML, images, SVG, PDF — anything the browser can render natively.
+        .register_asynchronous_uri_scheme_protocol("localfile", move |_app, request, responder| {
+            // The request URI is a `tauri::http::Uri`. Its path segment encodes
+            // the file location: for `localfile:///C:/x/index.html` the path is
+            // `/C:/x/index.html`. Decode and read on this thread (the protocol
+            // runs off the main thread already).
+            let uri = request.uri().clone();
+            let raw = uri.path().to_string();
+            let path_str = if raw.starts_with('/') && raw.len() > 2 && raw.as_bytes()[2] == b':' {
+                // Windows drive path: strip the single leading slash → `C:/...`
+                raw[1..].to_string()
+            } else {
+                raw
+            };
+            let path = PathBuf::from(&path_str);
+            let path_for_mime = path_str.clone();
+            match fs::read(&path) {
+                Ok(bytes) => {
+                    let mime = guess_mime(&path_for_mime);
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(200)
+                            .header("Content-Type", mime)
+                            .body(bytes)
+                            .unwrap(),
+                    );
+                }
+                Err(err) => {
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(404)
+                            .header("Content-Type", "text/plain")
+                            .body(format!("Could not read local file: {err}").into_bytes())
+                            .unwrap(),
+                    );
+                }
+            }
+        })
         .setup(|app| {
             let database = open_database(app.handle())?;
             app.manage(DatabaseState {

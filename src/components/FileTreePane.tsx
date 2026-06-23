@@ -39,15 +39,20 @@ export function isBrowserOpenable(name: string): boolean {
   return ext ? BROWSER_OPENABLE_EXTENSIONS.has(ext) : false;
 }
 
-/// Build a `file://` URL from an absolute path. Windows paths (C:\\...) become
-/// `file:///C:/...` (three slashes — empty host, absolute path /C:/...); Unix
-/// paths (/home/...) become `file:///home/...`. Three slashes is the canonical
-/// form WebView2/WKWebView expect; two-slash variants get mangled by some
-/// webview URL normalizers.
+/// Build a `localfile://` URL from an absolute path. We use a custom protocol
+/// (registered in src-tauri/src/lib.rs) instead of `file://` because WebView2
+/// blocks direct file:// navigation from external origins for security — it
+/// mangles the URL into `file:////?/C:/...` and returns ERR_TOO_MANY_REDIRECTS.
+/// The `localfile` scheme routes through a Rust handler that reads the file
+/// from disk and returns it with a proper content-type.
+///
+/// Windows paths (C:\\...) become `localfile:///C:/...`; Unix paths
+/// (/home/...) become `localfile:///home/...`. Three slashes (empty host) is
+/// the canonical form.
 export function toFileUrl(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   const withLeadingSlash = normalized.startsWith("/") ? normalized : `/${normalized}`;
-  return `file://${withLeadingSlash}`;
+  return `localfile://${withLeadingSlash}`;
 }
 
 function fileIcon(name: string) {
