@@ -693,7 +693,10 @@ kbd {
 .terminal-surface {
   min-width: 0;
   min-height: 0;
-  padding: 14px 10px 8px 14px;
+  /* Bottom padding is generous (40px) so the active input line never sits
+     cramped against the action/dispatch bar directly beneath the terminal.
+     The earlier 8px left the prompt flush with the bar, which felt tight. */
+  padding: 14px 10px 40px 14px;
   overflow: hidden;
   /* The container background must match the xterm theme's background exactly.
      xterm runs with allowTransparency: true, so its canvas is transparent
