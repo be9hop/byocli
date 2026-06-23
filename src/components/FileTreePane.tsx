@@ -4,15 +4,12 @@ import {
   Folder, FolderOpen, FolderTree, RefreshCw
 } from "lucide-react";
 import type { FileTreeEntry } from "../types";
-import { listWorkspaceDirectory } from "../lib/platform";
+import { getLocalFileServerPort, listWorkspaceDirectory, openExternal } from "../lib/platform";
 import { IconButton } from "./IconButton";
 
 type Props = {
   workspaceName: string;
   root: string;
-  /// Port of the localhost file server. 0 means the server isn't running
-  /// (non-Tauri dev fallback) — in that case double-click-to-open is disabled.
-  fileServerPort: number;
   /// Fired when a browser-renderable file is double-clicked. The argument is an
   /// `http://127.0.0.1:port/...` URL the parent passes to its browser pane.
   onOpenInBrowser?: (url: string) => void;
@@ -25,7 +22,6 @@ type TreeNodeProps = {
   selectedPath: string | null;
   onSelect: (path: string) => void;
   onOpenInBrowser?: (url: string) => void;
-  fileServerPort: number;
   refreshToken: number;
 };
 
@@ -86,7 +82,7 @@ function displayRelativePath(root: string, path: string) {
 }
 
 const TreeNode = memo(function TreeNode({
-  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, fileServerPort, refreshToken
+  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, refreshToken
 }: TreeNodeProps) {
   const directory = entry.kind === "directory";
   const [expanded, setExpanded] = useState(false);
@@ -130,12 +126,27 @@ const TreeNode = memo(function TreeNode({
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={activate}
         onDoubleClick={() => {
-          // Double-click a browser-renderable file to open it in the browser
-          // split. Directories and code files keep single-click behavior.
-          // Guarded on fileServerPort > 0 so the non-Tauri dev fallback (no
-          // server running) silently no-ops instead of building a broken URL.
-          if (!directory && fileServerPort > 0 && isBrowserOpenable(entry.name) && onOpenInBrowser) {
-            onOpenInBrowser(toFileUrl(entry.path, fileServerPort));
+          // Double-click a browser-renderable file to open it. Directories and
+          // code files keep single-click behavior only.
+          //
+          // Primary path: open in the in-app browser split via the localhost
+          // file server. The port is fetched lazily on demand so a slow/failed
+          // boot fetch can't strand the handler (the previous threaded-prop
+          // approach left fileServerPort at 0 if the boot fetch hadn't landed,
+          // silently disabling the feature).
+          //
+          // Fallback: if the server isn't running (port 0), open the file in
+          // the system default browser via open_external. The feature always
+          // does *something* — no silent dead click.
+          if (!directory && isBrowserOpenable(entry.name)) {
+            void getLocalFileServerPort().then((port) => {
+              if (port > 0 && onOpenInBrowser) {
+                onOpenInBrowser(toFileUrl(entry.path, port));
+              } else {
+                console.warn("Local file server unavailable; opening in system browser.");
+                void openExternal(entry.path);
+              }
+            });
           }
         }}
         title={entry.path}
@@ -164,7 +175,6 @@ const TreeNode = memo(function TreeNode({
               selectedPath={selectedPath}
               onSelect={onSelect}
               onOpenInBrowser={onOpenInBrowser}
-              fileServerPort={fileServerPort}
               refreshToken={refreshToken}
             />
           ))}
@@ -179,7 +189,7 @@ const TreeNode = memo(function TreeNode({
   );
 });
 
-export const FileTreePane = memo(function FileTreePane({ workspaceName, root, fileServerPort, onOpenInBrowser }: Props) {
+export const FileTreePane = memo(function FileTreePane({ workspaceName, root, onOpenInBrowser }: Props) {
   const [entries, setEntries] = useState<FileTreeEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -241,7 +251,6 @@ export const FileTreePane = memo(function FileTreePane({ workspaceName, root, fi
                 selectedPath={selectedPath}
                 onSelect={setSelectedPath}
                 onOpenInBrowser={onOpenInBrowser}
-                fileServerPort={fileServerPort}
                 refreshToken={refreshToken}
               />
             ))}

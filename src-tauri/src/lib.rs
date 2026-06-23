@@ -103,7 +103,7 @@ fn guess_mime(path: &str) -> &'static str {
 /// file by absolute path (the URL path is the percent-decoded filesystem path),
 /// which is acceptable because BYOCLI only constructs these URLs from files the
 /// user double-clicked in their own workspace.
-fn start_local_file_server() -> Result<u16, String> {
+pub fn start_local_file_server() -> Result<u16, String> {
     use std::io::{Read, Write};
     use std::net::TcpListener;
 
@@ -1158,11 +1158,18 @@ pub fn run() {
             });
 
             // Start the localhost file server before any webview might need it.
-            // The port is stored in a OnceLock so the file-URL builder can read
-            // it, and exposed to the frontend via get_local_file_server_port.
-            if let Ok(port) = start_local_file_server() {
-                let _ = LOCAL_FILE_PORT.set(port);
-                app.manage(LocalFileServerPort(port));
+            // Always register the port as managed state (even 0 on failure) so
+            // the get_local_file_server_port command never throws; the frontend
+            // treats 0 as "server unavailable" and falls back to open_external.
+            match start_local_file_server() {
+                Ok(port) => {
+                    let _ = LOCAL_FILE_PORT.set(port);
+                    app.manage(LocalFileServerPort(port));
+                }
+                Err(err) => {
+                    eprintln!("Local file server failed to start: {err}");
+                    app.manage(LocalFileServerPort(0));
+                }
             }
 
             let open_item = MenuItem::with_id(app, "open", "Open BYOCLI", true, None::<&str>)?;

@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import { createDefaultState, createWorkspace, normalizeState } from "./lib/defaults";
 import {
-  chooseWorkspace, getAutomationTempDirectory, getLocalFileServerPort, getRunningTerminalSessionIds, isTauri, killTerminal, loadState, onAutomationTick, onTerminalExit, onTerminalOutput, openExternal,
+  chooseWorkspace, getAutomationTempDirectory, getRunningTerminalSessionIds, isTauri, killTerminal, loadState, onAutomationTick, onTerminalExit, onTerminalOutput, openExternal,
   saveState, spawnTerminal, writeTerminal, KILLED_EXIT_CODE
 } from "./lib/platform";
 import { Sidebar, type SidebarWorkspace } from "./components/Sidebar";
@@ -55,7 +55,6 @@ export default function App() {
   const [pendingRemoval, setPendingRemoval] = useState<Workspace | null>(null);
   const [activeView, setActiveView] = useState<"workspace" | "automations">("workspace");
   const [automationTempDirectory, setAutomationTempDirectory] = useState("");
-  const [fileServerPort, setFileServerPort] = useState(0);
   const annotationInputRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState<"browser" | "files" | null>(null);
   const stateRef = useRef<AppState | null>(null);
@@ -128,7 +127,6 @@ export default function App() {
       }
     })();
     void getAutomationTempDirectory().then(setAutomationTempDirectory).catch(console.error);
-    void getLocalFileServerPort().then(setFileServerPort).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -1168,7 +1166,6 @@ export default function App() {
               <FileTreePane
                 workspaceName={workspace.name}
                 root={workspace.path}
-                fileServerPort={fileServerPort}
                 onOpenInBrowser={openBrowser}
               />
             </>
