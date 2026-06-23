@@ -118,15 +118,19 @@ pub fn start_local_file_server() -> Result<u16, String> {
             let mut buf = [0u8; 4096];
             let n = stream.read(&mut buf).unwrap_or(0);
             let request = String::from_utf8_lossy(&buf[..n]);
-            // Parse: `GET /<percent-encoded path> HTTP/1.1`
+            // Parse: `GET /<path> HTTP/1.1`. WebView2 injects a sandbox prefix
+            // into the path even for localhost URLs — the raw request line comes
+            // in as `GET /?/C:/Users/.../index.html` (or with `?` percent-encoded
+            // as `%3F`). We percent-decode first, then strip the leading slash
+            // and any `?/` sandbox prefix, so the remainder is a clean path.
             let path = request
                 .lines()
                 .next()
                 .and_then(|line| line.split_whitespace().nth(1))
                 .map(|p| {
-                    // Strip leading slash, then percent-decode.
-                    let stripped = p.strip_prefix('/').unwrap_or(p);
-                    percent_decode(stripped)
+                    let decoded = percent_decode(p);
+                    let after_slash = decoded.strip_prefix('/').unwrap_or(&decoded);
+                    after_slash.strip_prefix("?/").unwrap_or(after_slash).to_string()
                 });
 
             let response = match path {
