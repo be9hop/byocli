@@ -46,6 +46,7 @@ function state(workspaces: Workspace[], overrides: Partial<AppState> = {}): AppS
     automations: [],
     automationRuns: [],
     sidebarCollapsed: false,
+    theme: "dark",
     ...overrides
   };
 }
@@ -157,6 +158,38 @@ describe("normalizeState — automations", () => {
     expect(normalized.automationRuns).toHaveLength(150);
     // The most recent 150 are retained (the tail of the array).
     expect(normalized.automationRuns.at(-1)!.id).toBe("r199");
+  });
+});
+
+describe("normalizeState — theme", () => {
+  it("preserves a valid light theme", () => {
+    const normalized = normalizeState(state([], { theme: "light" }));
+    expect(normalized.theme).toBe("light");
+  });
+
+  it("preserves a valid dark theme", () => {
+    const normalized = normalizeState(state([], { theme: "dark" }));
+    expect(normalized.theme).toBe("dark");
+  });
+
+  it("defaults to dark when theme is missing (old saved state)", () => {
+    // Simulate a pre-theme saved blob by deleting the field entirely.
+    const saved = state([]);
+    delete (saved as { theme?: unknown }).theme;
+    const normalized = normalizeState(saved);
+    expect(normalized.theme).toBe("dark");
+  });
+
+  it("rejects a corrupt theme value and falls back to dark", () => {
+    // A corrupt value like "purple" must not propagate silently.
+    const normalized = normalizeState(state([], { theme: "purple" as never }));
+    expect(normalized.theme).toBe("dark");
+  });
+});
+
+describe("createDefaultState — theme", () => {
+  it("defaults to dark", () => {
+    expect(createDefaultState().theme).toBe("dark");
   });
 });
 

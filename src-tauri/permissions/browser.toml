@@ -10,6 +10,7 @@ commands.allow = [
   "load_app_state",
   "save_app_state",
   "get_automation_temp_directory",
+  "get_local_file_server_port",
   "get_running_terminal_session_ids",
   "spawn_terminal",
   "write_terminal",

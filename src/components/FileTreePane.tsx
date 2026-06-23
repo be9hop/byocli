@@ -4,12 +4,15 @@ import {
   Folder, FolderOpen, FolderTree, RefreshCw
 } from "lucide-react";
 import type { FileTreeEntry } from "../types";
-import { listWorkspaceDirectory } from "../lib/platform";
+import { getLocalFileServerPort, listWorkspaceDirectory, openExternal } from "../lib/platform";
 import { IconButton } from "./IconButton";
 
 type Props = {
   workspaceName: string;
   root: string;
+  /// Fired when a browser-renderable file is double-clicked. The argument is an
+  /// `http://127.0.0.1:port/...` URL the parent passes to its browser pane.
+  onOpenInBrowser?: (url: string) => void;
 };
 
 type TreeNodeProps = {
@@ -18,8 +21,45 @@ type TreeNodeProps = {
   depth: number;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  onOpenInBrowser?: (url: string) => void;
   refreshToken: number;
 };
+
+/// Extensions a browser can render natively via a file:// URL. Double-clicking
+/// a file with one of these opens it in the browser split; everything else
+/// (code, configs, text) is left to single-click selection only.
+const BROWSER_OPENABLE_EXTENSIONS = new Set([
+  "html", "htm", "xhtml", "svg",
+  "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico",
+  "pdf"
+]);
+
+export function isBrowserOpenable(name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase();
+  return ext ? BROWSER_OPENABLE_EXTENSIONS.has(ext) : false;
+}
+
+/// Build a localhost HTTP URL for a local file. WebView2 blocks direct
+/// `file://` navigation from external webview origins and doesn't reliably
+/// honor Tauri's registered custom protocols in child webviews, so we serve
+/// local files over a tiny localhost HTTP server (started by the Rust backend).
+/// `http://127.0.0.1` is an origin all webviews universally allow.
+///
+/// The path is the absolute filesystem path with backslashes normalized to
+/// forward slashes, URL-encoded so spaces and special chars survive transit.
+export function toFileUrl(path: string, port: number): string {
+  const normalized = path.replace(/\\/g, "/");
+  // Encode only characters that are unsafe in a URL path: space and anything
+  // outside the unreserved set. Preserve `/` and `:` (the Windows drive
+  // separator) so paths stay readable.
+  const encoded = normalized.replace(/[^A-Za-z0-9\-._~!$&'()*+,;=:/@]/g, (ch) =>
+    encodeURIComponent(ch)
+  );
+  // Collapse any leading slashes to exactly one, so the URL path always starts
+  // with a single `/`. Windows `C:/x` → `/C:/x`; Unix `/home/x` → `/home/x`.
+  const pathPart = `/${encoded.replace(/^\/+/, "")}`;
+  return `http://127.0.0.1:${port}${pathPart}`;
+}
 
 function fileIcon(name: string) {
   const extension = name.split(".").pop()?.toLowerCase();
@@ -42,7 +82,7 @@ function displayRelativePath(root: string, path: string) {
 }
 
 const TreeNode = memo(function TreeNode({
-  entry, root, depth, selectedPath, onSelect, refreshToken
+  entry, root, depth, selectedPath, onSelect, onOpenInBrowser, refreshToken
 }: TreeNodeProps) {
   const directory = entry.kind === "directory";
   const [expanded, setExpanded] = useState(false);
@@ -85,6 +125,30 @@ const TreeNode = memo(function TreeNode({
         className={`file-tree-row ${selectedPath === entry.path ? "is-selected" : ""}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={activate}
+        onDoubleClick={() => {
+          // Double-click a browser-renderable file to open it. Directories and
+          // code files keep single-click behavior only.
+          //
+          // Primary path: open in the in-app browser split via the localhost
+          // file server. The port is fetched lazily on demand so a slow/failed
+          // boot fetch can't strand the handler (the previous threaded-prop
+          // approach left fileServerPort at 0 if the boot fetch hadn't landed,
+          // silently disabling the feature).
+          //
+          // Fallback: if the server isn't running (port 0), open the file in
+          // the system default browser via open_external. The feature always
+          // does *something* — no silent dead click.
+          if (!directory && isBrowserOpenable(entry.name)) {
+            void getLocalFileServerPort().then((port) => {
+              if (port > 0 && onOpenInBrowser) {
+                onOpenInBrowser(toFileUrl(entry.path, port));
+              } else {
+                console.warn("Local file server unavailable; opening in system browser.");
+                void openExternal(entry.path);
+              }
+            });
+          }
+        }}
         title={entry.path}
       >
         <span className="file-tree-chevron">
@@ -110,6 +174,7 @@ const TreeNode = memo(function TreeNode({
               depth={depth + 1}
               selectedPath={selectedPath}
               onSelect={onSelect}
+              onOpenInBrowser={onOpenInBrowser}
               refreshToken={refreshToken}
             />
           ))}
@@ -124,7 +189,7 @@ const TreeNode = memo(function TreeNode({
   );
 });
 
-export const FileTreePane = memo(function FileTreePane({ workspaceName, root }: Props) {
+export const FileTreePane = memo(function FileTreePane({ workspaceName, root, onOpenInBrowser }: Props) {
   const [entries, setEntries] = useState<FileTreeEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,6 +250,7 @@ export const FileTreePane = memo(function FileTreePane({ workspaceName, root }: 
                 depth={0}
                 selectedPath={selectedPath}
                 onSelect={setSelectedPath}
+                onOpenInBrowser={onOpenInBrowser}
                 refreshToken={refreshToken}
               />
             ))}

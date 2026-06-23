@@ -1,9 +1,10 @@
 import {
-  ArrowLeft, ArrowRight, CalendarClock, Folder, FolderOpen, PanelLeftOpen, Plus,
+  CalendarClock, Folder, FolderOpen, PanelLeftOpen, Plus,
   Search, Settings2, TerminalSquare, Trash2
 } from "lucide-react";
 import { memo } from "react";
-import type { Workspace } from "../types";
+import type { Theme, Workspace } from "../types";
+import { logoForTheme } from "../lib/theme";
 import { IconButton } from "./IconButton";
 
 /// The minimal slice of a Workspace that the Sidebar actually renders. Accepting
@@ -19,11 +20,8 @@ type Props = {
   activeId: string;
   automationsActive: boolean;
   collapsed: boolean;
-  canGoBack: boolean;
-  canGoForward: boolean;
+  theme: Theme;
   onExpand: () => void;
-  onBack: () => void;
-  onForward: () => void;
   onSelect: (id: string) => void;
   onAdd: () => void;
   onSearch: () => void;
@@ -34,7 +32,7 @@ type Props = {
 };
 
 export const Sidebar = memo(function Sidebar({
-  workspaces, activeId, automationsActive, collapsed, canGoBack, canGoForward, onExpand, onBack, onForward, onSelect,
+  workspaces, activeId, automationsActive, collapsed, theme, onExpand, onSelect,
   onAdd, onSearch, onAutomations, onSettings, onRemove, onOpenAppLink
 }: Props) {
   return (
@@ -46,16 +44,8 @@ export const Sidebar = memo(function Sidebar({
             <PanelLeftOpen className="sidebar-expand-glyph" size={14} />
           </IconButton>
         ) : (
-          <img className="brand-logo" src="/byocli-logo.png" alt="BYOCLI" />
+          <img className="brand-logo" src={logoForTheme(theme)} alt="BYOCLI" />
         )}
-        <div className="window-nav">
-          <IconButton label="Previous workspace" disabled={!canGoBack} onClick={onBack}>
-            <ArrowLeft size={14} />
-          </IconButton>
-          <IconButton label="Next workspace" disabled={!canGoForward} onClick={onForward}>
-            <ArrowRight size={14} />
-          </IconButton>
-        </div>
       </div>
 
       <nav className="primary-nav" aria-label="Primary">

@@ -66,6 +66,241 @@ struct TerminalProcess {
 /// "killed by signal" encoding (128 + signal) with SIGKILL (9) = 137.
 const KILLED_EXIT_CODE: u32 = 137;
 
+/// Minimal content-type guesser for the local-file HTTP server. Covers the
+/// browser-renderable types the file-tree double-click opens.
+fn guess_mime(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().map(str::to_ascii_lowercase);
+    match ext.as_deref() {
+        Some("html") | Some("htm") | Some("xhtml") => "text/html; charset=utf-8",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("avif") => "image/avif",
+        Some("bmp") => "image/bmp",
+        Some("ico") => "image/x-icon",
+        Some("pdf") => "application/pdf",
+        Some("css") => "text/css; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("json") => "application/json; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Start a minimal localhost HTTP server that serves files from disk. Returns
+/// the bound port.
+///
+/// Why this exists: WebView2 blocks `file://` navigation from external webview
+/// origins and doesn't reliably honor Tauri's registered custom protocols in
+/// child webviews (the URL gets mangled into `file:////?/C:/...` /
+/// `https://localfile:////?/...`). The only origin all webviews universally
+/// allow is `http://`, so we serve local files over `http://127.0.0.1:PORT`.
+/// This is how Vite/webpack serve local content — battle-tested and zero
+/// webview-scope uncertainty.
+///
+/// The server runs for the app's lifetime on a background thread. It serves any
+/// file by absolute path (the URL path is the percent-decoded filesystem path),
+/// which is acceptable because BYOCLI only constructs these URLs from files the
+/// user double-clicked in their own workspace.
+pub fn start_local_file_server() -> Result<u16, String> {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
+    let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    // Accept the listener once per thread; the server thread owns it for life.
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            // Read the request line (minimal HTTP/1.x parsing — we only need the
+            // path). Bound the read so a malformed client can't hang us.
+            let mut buf = [0u8; 4096];
+            let n = stream.read(&mut buf).unwrap_or(0);
+            let request = String::from_utf8_lossy(&buf[..n]);
+            // Parse: `GET /<path> HTTP/1.1`. WebView2 injects a sandbox prefix
+            // into the path even for localhost URLs — the raw request line comes
+            // in as `GET /?/C:/Users/.../index.html` (or with `?` percent-encoded
+            // as `%3F`). We percent-decode first, then strip the leading slash
+            // and any `?/` sandbox prefix, so the remainder is a clean path.
+            let path = request
+                .lines()
+                .next()
+                .and_then(|line| line.split_whitespace().nth(1))
+                .map(|p| {
+                    let decoded = percent_decode(p);
+                    let after_slash = decoded.strip_prefix('/').unwrap_or(&decoded);
+                    after_slash.strip_prefix("?/").unwrap_or(after_slash).to_string()
+                });
+
+            let response = match path {
+                Some(decoded) => {
+                    // On Windows the path looks like `C:/Users/.../index.html`.
+                    // The browser may URL-encode the drive separator; decoding
+                    // already handled that. If the file exists, serve it.
+                    let candidate = PathBuf::from(&decoded);
+                    match fs::read(&candidate) {
+                        Ok(bytes) => {
+                            let mime = guess_mime(&decoded);
+                            let body = String::from_utf8_lossy(&bytes).into_owned();
+                            // Rewrite relative asset references to absolute
+                            // localfile/http URLs so a served HTML file's <link>
+                            // and <script> tags resolve against the same server.
+                            // (Without this, `style.css` in index.html would 404.)
+                            let body = if mime.starts_with("text/html") {
+                                rewrite_html_assets(&body, &candidate)
+                            } else {
+                                body
+                            };
+                            let len = body.len();
+                            format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n{}",
+                                mime, len, body
+                            )
+                        }
+                        Err(_) => {
+                            let msg = format!("404 Not Found: {}", decoded);
+                            format!(
+                                "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                                msg.len(), msg
+                            )
+                        }
+                    }
+                }
+                None => {
+                    let msg = "400 Bad Request";
+                    format!(
+                        "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        msg.len(), msg
+                    )
+                }
+            };
+            let _ = stream.write_all(response.as_bytes());
+            let _ = stream.flush();
+        }
+    });
+    Ok(port)
+}
+
+/// Percent-decode a URL path component into a filesystem path string. Converts
+/// `%20` → space, `%25` → `%`, etc. Non-UTF8 bytes fall back to lossy conversion.
+fn percent_decode(input: &str) -> String {
+    let mut out = Vec::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(h), Some(l)) = (hex(bytes[i + 1]), hex(bytes[i + 2])) {
+                out.push(h * 16 + l);
+                i += 3;
+                continue;
+            }
+        }
+        // `+` is sometimes used for spaces in query strings; treat as space.
+        out.push(if bytes[i] == b'+' { b' ' } else { bytes[i] });
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn hex(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
+/// Rewrite relative `src`/`href` attributes in an HTML document so they point
+/// back at the local server, letting the browser fetch sibling assets
+/// (stylesheets, scripts, images) referenced by the served file. Absolute and
+/// already-qualified URLs (http://, //, #, data:, mailto:) are left alone.
+///
+/// Manual string scan rather than regex to avoid pulling in a crate. We look
+/// for `src="..."` and `href="..."` and rewrite relative values.
+fn rewrite_html_assets(html: &str, base_file: &Path) -> String {
+    let port = LOCAL_FILE_PORT.get().copied().unwrap_or(0);
+    let dir = base_file.parent().unwrap_or_else(|| Path::new("."));
+    let mut out = String::with_capacity(html.len());
+    let bytes = html.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        // Match `src=` or `href=` (case-insensitive) followed by a quoted value.
+        if let Some(attr_len) = match_attr(bytes, i, "src").or_else(|| match_attr(bytes, i, "href")) {
+            let attr = &html[i..i + attr_len];
+            out.push_str(attr);
+            i += attr_len;
+            // Optional whitespace before =
+            while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            if i < bytes.len() && bytes[i] == b'=' {
+                out.push('=');
+                i += 1;
+                while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
+                    out.push(bytes[i] as char);
+                    i += 1;
+                }
+                // Find the quote char and the closing quote.
+                if i < bytes.len() && (bytes[i] == b'"' || bytes[i] == b'\'') {
+                    let quote = bytes[i];
+                    out.push(quote as char);
+                    i += 1;
+                    let start = i;
+                    while i < bytes.len() && bytes[i] != quote {
+                        i += 1;
+                    }
+                    let value = &html[start..i];
+                    let is_relative = !value.starts_with("http://")
+                        && !value.starts_with("https://")
+                        && !value.starts_with("//")
+                        && !value.starts_with('#')
+                        && !value.starts_with("data:")
+                        && !value.starts_with("mailto:")
+                        && !value.starts_with("tel:");
+                    if is_relative && port > 0 {
+                        let joined = dir.join(value);
+                        let abs = joined.to_string_lossy().replace('\\', "/");
+                        out.push_str(&format!("http://127.0.0.1:{port}/{abs}"));
+                    } else {
+                        out.push_str(value);
+                    }
+                    if i < bytes.len() {
+                        out.push(quote as char);
+                        i += 1;
+                    }
+                }
+            }
+        } else {
+            out.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    out
+}
+
+/// If `bytes` at position `i` matches `attr=` (case-insensitive, ignoring
+/// leading/trailing spaces), return the byte length matched (the attribute name
+/// only, not the `=`). Returns None otherwise.
+fn match_attr(bytes: &[u8], i: usize, attr: &str) -> Option<usize> {
+    let ab = attr.as_bytes();
+    if i + ab.len() > bytes.len() {
+        return None;
+    }
+    for (j, &c) in ab.iter().enumerate() {
+        if bytes[i + j].to_ascii_lowercase() != c.to_ascii_lowercase() {
+            return None;
+        }
+    }
+    Some(ab.len())
+}
+
+// Set by start_local_file_server() so rewrite_html_assets can build absolute
+// URLs. Stored in a OnceLock so it's read-only after init.
+static LOCAL_FILE_PORT: std::sync::OnceLock<u16> = std::sync::OnceLock::new();
+
 struct TerminalState {
     processes: Arc<Mutex<HashMap<String, TerminalProcess>>>,
     /// Session ids explicitly killed via `kill_terminal`. Their exit is expected
@@ -86,6 +321,11 @@ impl Default for TerminalState {
 struct DatabaseState {
     connection: Mutex<Connection>,
 }
+
+/// Holds the port of the localhost file server, if it started successfully.
+/// Managed as Tauri state so the `get_local_file_server_port` command can read
+/// it without touching the OnceLock directly.
+struct LocalFileServerPort(u16);
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -360,6 +600,11 @@ fn get_automation_temp_directory() -> Result<String, String> {
         }
     }
     Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn get_local_file_server_port(state: State<'_, LocalFileServerPort>) -> Result<u16, String> {
+    Ok(state.0)
 }
 
 #[tauri::command]
@@ -916,6 +1161,21 @@ pub fn run() {
                 connection: Mutex::new(database),
             });
 
+            // Start the localhost file server before any webview might need it.
+            // Always register the port as managed state (even 0 on failure) so
+            // the get_local_file_server_port command never throws; the frontend
+            // treats 0 as "server unavailable" and falls back to open_external.
+            match start_local_file_server() {
+                Ok(port) => {
+                    let _ = LOCAL_FILE_PORT.set(port);
+                    app.manage(LocalFileServerPort(port));
+                }
+                Err(err) => {
+                    eprintln!("Local file server failed to start: {err}");
+                    app.manage(LocalFileServerPort(0));
+                }
+            }
+
             let open_item = MenuItem::with_id(app, "open", "Open BYOCLI", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit BYOCLI", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
@@ -964,6 +1224,7 @@ pub fn run() {
             load_app_state,
             save_app_state,
             get_automation_temp_directory,
+            get_local_file_server_port,
             get_running_terminal_session_ids,
             spawn_terminal,
             write_terminal,

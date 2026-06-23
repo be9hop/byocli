@@ -54,6 +54,19 @@ export async function getAutomationTempDirectory(): Promise<string> {
   return invokeNative<string>("get_automation_temp_directory");
 }
 
+/// Port of the localhost file server (started by the Rust backend in .setup()).
+/// The frontend builds `http://127.0.0.1:port/<path>` URLs for files opened from
+/// the file tree, because WebView2 blocks direct `file://` navigation. Returns 0
+/// in the non-Tauri dev fallback (no server running).
+export async function getLocalFileServerPort(): Promise<number> {
+  if (!isTauri()) return 0;
+  try {
+    return await invokeNative<number>("get_local_file_server_port");
+  } catch {
+    return 0;
+  }
+}
+
 export async function spawnTerminal(workspace: Workspace, sessionId: string, command: string, args: string[]) {
   if (!isTauri()) return;
   await invokeNative("spawn_terminal", {
